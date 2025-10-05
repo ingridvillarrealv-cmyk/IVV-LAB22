@@ -1,0 +1,93 @@
+# 1. CARGAR LIBRERÍAS
+library(readr)
+library(tidyverse)
+library(ggplot2)
+library(scales)
+
+
+# 2. CARGAR DATOS Y CONVERTIR PORCENTAJES
+sole_proprietors <- read_csv("C:/Users/Ingrid/Desktop/Sole proprietors.csv") %>%
+  mutate(
+    Porcentaje_Mujeres = as.numeric(gsub("%", "", Porcentaje_Mujeres)) / 100,
+    Porcentaje_Hombres = as.numeric(gsub("%", "", Porcentaje_Hombres)) / 100
+  )
+
+
+# 3. DEFINIR PAÍSES DE INTERÉS
+paises_seleccionados <- c("Mexico", "Chile", "Uruguay", "France", "Germany", "Netherlands")
+
+
+# 4. FILTRAR DATOS
+datos_filtrados <- sole_proprietors %>%
+  filter(Pais %in% paises_seleccionados)
+
+
+# 5. OBTENER EL AÑO MÁS RECIENTE
+ultimo_año <- datos_filtrados %>%
+  group_by(Pais) %>%
+  filter(Año == max(Año)) %>%
+  ungroup()
+
+
+# 6. GRÁFICO 1: EVOLUCIÓN TEMPORAL
+grafico1 <- ggplot(datos_filtrados, 
+                   aes(x = Año, y = Porcentaje_Mujeres, 
+                       color = Pais, group = Pais)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.5) +
+  theme_minimal() +
+  labs(title = "Evolución de la proporción de mujeres propietarias",
+       subtitle = "Comparativa entre países seleccionados",
+       y = "Proporción de mujeres",
+       x = "Año") +
+  scale_y_continuous(labels = percent) +
+  scale_color_brewer(palette = "Set2") +
+  theme(legend.position = "bottom")
+
+print(grafico1)
+
+
+# 7. GRÁFICO 2: RANKING PROPORCIÓN FEMENINA
+grafico2 <- ggplot(ultimo_año, 
+                   aes(x = reorder(Pais, Porcentaje_Mujeres), 
+                       y = Porcentaje_Mujeres,
+                       fill = Pais)) +
+  geom_col(alpha = 0.8) +
+  geom_text(aes(label = percent(Porcentaje_Mujeres, accuracy = 0.1)), 
+            hjust = -0.1, size = 4) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Ranking: Proporción de mujeres propietarias",
+       subtitle = "Año más reciente disponible",
+       y = "Proporción de mujeres",
+       x = "") +
+  scale_y_continuous(labels = percent, expand = expansion(mult = c(0, 0.15))) +
+  scale_fill_brewer(palette = "Set2") +
+  theme(legend.position = "none")
+
+print(grafico2)
+
+
+
+# 8. GRÁFICO 3: COMPARACIÓN HOMBRES vs MUJERES
+comparacion_genero <- ultimo_año %>%
+  select(Pais, Año, 
+         Mujeres = Mujeres_Propietarias,
+         Hombres = Hombres_Propietarios) %>%
+  pivot_longer(cols = c(Mujeres, Hombres), 
+               names_to = "Género", 
+               values_to = "Cantidad")
+
+grafico3 <- ggplot(comparacion_genero, 
+                   aes(x = Pais, y = Cantidad, fill = Género)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.8) +
+  theme_minimal() +
+  labs(title = "Comparación de propietarios únicos por género",
+       subtitle = "Año más reciente disponible",
+       y = "Número de propietarios",
+       x = "") +
+  scale_fill_manual(values = c("Mujeres" = "pink", "Hombres" = "#56B4E9")) +
+  scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(grafico3)
